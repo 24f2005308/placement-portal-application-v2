@@ -11,6 +11,8 @@ class User(db.Model, UserMixin):
     fs_uniquifier = db.Column(db.String(255), unique=True, nullable=False)
     
     roles = db.relationship('Role', secondary='users_roles', backref=db.backref('users', lazy='dynamic'))
+    company_profile = db.relationship('Company', backref='user', uselist=False, cascade="all, delete")
+    student_profile = db.relationship('Student', backref='user', uselist=False, cascade="all, delete")
 
 class Role(db.Model, RoleMixin):
     id = db.Column(db.Integer(), primary_key=True)
