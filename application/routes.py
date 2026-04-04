@@ -7,6 +7,9 @@ from flask_security import auth_required, current_user
 from flask_security.utils import logout_user
 from flask_security import auth_required
 from flask import render_template
+import os
+from flask import send_from_directory
+from werkzeug.utils import secure_filename
 
 
 def make_raw(text):
@@ -119,3 +122,60 @@ def user_register():
         db.session.add(company_profile)
     db.session.commit()
     return jsonify({"message": f"{role.capitalize()} registered successfully"}), 201
+
+
+
+@app.route('/download-resume/<filename>', methods=['GET'])
+@auth_required('token')
+def download_resume(filename):
+    upload_folder = app.config.get('UPLOAD_FOLDER')
+    
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+        
+    try:
+        return send_from_directory(upload_folder, filename)
+    except FileNotFoundError:
+        return jsonify({"message": "Resume file not found"}), 404
+    
+
+
+@app.route('/upload-resume', methods=['POST'])
+@auth_required('token')
+def upload_resume():
+    if not current_user.has_role('student'):
+        return jsonify({"message": "Only students can upload resumes"}), 403
+
+    if 'file' not in request.files:
+        return jsonify({"message": "No file part in the request"}), 400
+        
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({"message": "No file selected for uploading"}), 400
+
+    if file and file.filename.endswith('.pdf'):
+        original_filename = secure_filename(file.filename)
+        
+        safe_filename = f"user_{current_user.id}_{original_filename}"
+        
+        upload_folder = app.config.get('UPLOAD_FOLDER')
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+            
+        file_path = os.path.join(upload_folder, safe_filename)
+        file.save(file_path)
+        
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if student:
+            student.resume_file = safe_filename
+            db.session.commit()
+            
+        return jsonify({
+            "message": "Resume uploaded successfully", 
+            "filename": safe_filename
+        }), 200
+        
+    else:
+        return jsonify({"message": "Allowed file type is PDF only"}), 400
+    
