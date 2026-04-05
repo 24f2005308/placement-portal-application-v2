@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Placement Activity Report</title>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+    
+    <h2 style="color: #198754;">Monthly Placement Activity Report</h2>
+    <p>Hello <strong>Admin</strong>,</p>
+    
+    <p>Here is the automated placement activity summary for <strong>{{ data['month_year'] }}</strong>:</p>
+
+    <table border="1" cellpadding="10" cellspacing="0" style="width: 50%; border-collapse: collapse; margin-top: 20px;">
+        <tr style="background-color: #f8f9fa;">
+            <th style="text-align: left;">Metric</th>
+            <th style="text-align: left;">Count</th>
+        </tr>
+        <tr>
+            <td>Total Drives Conducted</td>
+            <td><strong>{{ data['total_drives'] }}</strong></td>
+        </tr>
+        <tr>
+            <td>Total Students Applied</td>
+            <td><strong>{{ data['total_applications'] }}</strong></td>
+        </tr>
+        <tr>
+            <td>Total Students Selected</td>
+            <td style="color: #198754;"><strong>{{ data['total_selected'] }}</strong></td>
+        </tr>
+    </table>
+
+    <br>
+    <p>Best regards,</p>
+    <p><strong>- Placement Portal System</strong></p>
+
+</body>
+</html>

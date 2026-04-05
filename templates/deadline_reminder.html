@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Placement Drive Deadlines Overview</title>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+    
+    <h2 style="color: #0d6efd;">Placement Drive Deadlines Overview</h2>
+    <p>Hello <strong>{{ data['student_name'] }}</strong>,</p>
+    
+    <p>This is a reminder regarding the currently open placement drives. If you have not applied yet, please review them before they close:</p>
+
+    <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <tr style="background-color: #f8f9fa;">
+            <th style="text-align: left;">Company Name</th>
+            <th style="text-align: left;">Job Title</th>
+            <th style="text-align: left;">Deadline</th>
+        </tr>
+        
+        {% for drive in data['drives'] %}
+        <tr>
+            <td><strong>{{ drive.company_name }}</strong></td>
+            <td>{{ drive.job_title }}</td>
+            <td style="color: #dc3545; font-weight: bold;">{{ drive.deadline }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <p>Best regards,</p>
+    <p><strong>- Placement Portal Admin</strong></p>
+
+</body>
+</html>

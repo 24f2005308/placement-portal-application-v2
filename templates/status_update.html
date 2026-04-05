@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Status Update</title>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+    
+    <h2 style="color: #0d6efd;">Application Status Update</h2>
+    
+    <p>Hi <strong>{{ data['student_name'] }}</strong>,</p>
+    
+    <p>Your application status for the placement drive at <strong>{{ data['company_name'] }}</strong> has been updated to: <span style="font-size: 18px; font-weight: bold; padding: 4px 8px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">{{ data['status'] }}</span>.</p>
+    
+    <p>Please log in to your Student Dashboard to check for any additional remarks or next steps.</p>
+
+    <br>
+    <p>Best regards,</p>
+    <p><strong>- Placement Portal Admin</strong></p>
+
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Placement Report</title>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+    
+    <h2>Monthly Application Report</h2>
+    <p>Hello <strong>{{ data['student_name'] }}</strong>,</p>
+    <p>Here is a summary of your placement drive applications for this month.</p>
+
+    <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <tr style="background-color: #f2f2f2;">
+            <th>Sr No</th>
+            <th>Company Name</th>
+            <th>Job Title</th>
+            <th>Status</th>
+        </tr>
+        
+        {% if data['applications']|length == 0 %}
+        <tr>
+            <td colspan="4" style="text-align: center;">You have not applied to any drives this month.</td>
+        </tr>
+        {% else %}
+            {% for app in data['applications'] %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ app.company_name }}</td>
+                <td>{{ app.job_title }}</td>
+                <td>{{ app.status }}</td>
+            </tr>
+            {% endfor %}
+        {% endif %}
+    </table>
+
+    <p style="margin-top: 30px;">Best of luck with your interviews!</p>
+    <p><strong>- Placement Portal Admin</strong></p>
+
+</body>
+</html>
