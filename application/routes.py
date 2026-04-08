@@ -6,10 +6,14 @@ from application.models import User, Student, Company
 from flask_security import auth_required, current_user
 from flask_security.utils import logout_user
 from flask_security import auth_required
-from flask import render_template
 import os
 from flask import send_from_directory
 from werkzeug.utils import secure_filename
+from flask import render_template
+from application.tasks import*
+from celery.result import AsyncResult
+from application.cache import cache
+
 
 
 def make_raw(text):
@@ -25,12 +29,17 @@ def make_raw(text):
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_vue_app(path):
+    """
+    This catches all routes and serves the single-page application entry point.
+    Vue Router will take over the routing on the frontend.
+    """
     return render_template('index.html')
 
 @app.route('/user-logout', methods=['POST'])
 @auth_required('token', 'session')
 def user_logout():
     logout_user()
+    cache.clear() 
     return jsonify({"message": "Logged out successfully"}), 200
 
 
@@ -40,10 +49,12 @@ def user_login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
+
     if not email or not password:
         return jsonify({"message": "Email and password are required"}), 400
 
     user = User.query.filter_by(email=email).first()
+
     if not user or not check_password_hash(user.password, password):
         return jsonify({"message": "Invalid credentials"}), 400
 
@@ -103,6 +114,9 @@ def user_register():
             user_id=new_user.id,
             first_name=data.get('first_name', ''),
             last_name=data.get('last_name', ''),
+            branch=data.get('branch'),
+            cgpa=data.get('cgpa'),
+            graduation_year=data.get('graduation_year'),
             search_student_name=raw_name
         )
         db.session.add(student_profile)
@@ -114,15 +128,15 @@ def user_register():
             user_id=new_user.id,
             company_name=data.get('company_name', ''),
             hr_contact=data.get('hr_contact', ''),
-            description=data.get('description', ''),
-            website=data.get('website', ''),
+            description=data.get('description', ''), 
+            website=data.get('website', ''),        
             approval_status='Pending',
             search_company_name=raw_comp_name
         )
         db.session.add(company_profile)
     db.session.commit()
-    return jsonify({"message": f"{role.capitalize()} registered successfully"}), 201
-
+    
+    return jsonify({"message": "Registration Successfull"}), 201
 
 
 @app.route('/download-resume/<filename>', methods=['GET'])
@@ -131,8 +145,7 @@ def download_resume(filename):
     upload_folder = app.config.get('UPLOAD_FOLDER')
     
     if not os.path.exists(upload_folder):
-        os.makedirs(upload_folder)
-        
+        os.makedirs(upload_folder) 
     try:
         return send_from_directory(upload_folder, filename)
     except FileNotFoundError:
@@ -143,6 +156,7 @@ def download_resume(filename):
 @app.route('/upload-resume', methods=['POST'])
 @auth_required('token')
 def upload_resume():
+    
     if not current_user.has_role('student'):
         return jsonify({"message": "Only students can upload resumes"}), 403
 
@@ -179,3 +193,95 @@ def upload_resume():
     else:
         return jsonify({"message": "Allowed file type is PDF only"}), 400
     
+@app.route('/trigger-report', methods=['POST'])
+@auth_required('token')
+def trigger_report():
+    """
+    Triggers the Celery background task to send the monthly report to the requesting student.
+    """
+    if not current_user.has_role('student'):
+        return jsonify({"message": "Only students can request this report"}), 403
+
+    task = send_monthly_student_report.delay(current_user.id)
+
+    return jsonify({
+        "message": "Monthly report generation started. Check your email shortly!",
+        "task_id": task.id
+    }), 200
+
+
+@app.route('/api/admin/export', methods=['POST'])
+@auth_required('token')
+def trigger_export():
+    """Triggers the CSV generation task."""
+    if not current_user.has_role('admin'):
+        return jsonify({"message": "Unauthorized"}), 403
+        
+    task = export_students_csv.delay()
+    return jsonify({"message": "Export started", "task_id": task.id}), 202
+
+@app.route('/api/admin/export/status/<task_id>', methods=['GET'])
+@auth_required('token')
+def export_status(task_id):
+    """Checks the status of the Celery task."""
+    if not current_user.has_role('admin'):
+        return jsonify({"message": "Unauthorized"}), 403
+        
+    task = AsyncResult(task_id)
+    
+    if task.state == 'SUCCESS':
+        return jsonify({"status": "Ready", "filename": task.result}), 200
+    elif task.state == 'FAILURE':
+        return jsonify({"status": "Failed"}), 500
+    else:
+        return jsonify({"status": "Processing"}), 202
+
+@app.route('/download-export/<filename>', methods=['GET'])
+@auth_required('token')
+def download_export(filename):
+    """Securely serves the generated CSV file."""
+    if not current_user.has_role('admin'):
+        return jsonify({"message": "Unauthorized"}), 403
+        
+    export_folder = os.path.join(app.root_path, 'static', 'exports')
+    
+    try:
+        return send_from_directory(export_folder, filename, as_attachment=True)
+    except FileNotFoundError:
+        return jsonify({"message": "File not found on server"}), 404
+    
+
+@app.route('/api/student/export', methods=['POST'])
+@auth_required('token')
+def trigger_student_export():
+    if not current_user.has_role('student'):
+        return jsonify({"message": "Unauthorized"}), 403
+        
+    task = export_student_history_csv.delay(current_user.id)
+    return jsonify({"message": "Export started", "task_id": task.id}), 202
+
+@app.route('/api/student/export/status/<task_id>', methods=['GET'])
+@auth_required('token')
+def student_export_status(task_id):
+    if not current_user.has_role('student'):
+        return jsonify({"message": "Unauthorized"}), 403
+        
+    task = AsyncResult(task_id)
+    if task.state == 'SUCCESS':
+        return jsonify({"status": "Ready", "filename": task.result}), 200
+    elif task.state == 'FAILURE':
+        return jsonify({"status": "Failed"}), 500
+    else:
+        return jsonify({"status": "Processing"}), 202
+
+@app.route('/download-student-export/<filename>', methods=['GET'])
+@auth_required('token')
+def download_student_export(filename):
+    if not current_user.has_role('student'):
+        return jsonify({"message": "Unauthorized"}), 403
+        
+    export_folder = os.path.join(app.root_path, 'static', 'exports')
+    try:
+        return send_from_directory(export_folder, filename, as_attachment=True)
+    except FileNotFoundError:
+        return jsonify({"message": "File not found on server"}), 404

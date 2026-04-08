@@ -11,20 +11,20 @@ beat_schedule = {
         'task': 'application.tasks.send_deadline_reminders',
         
         # TESTING
-        # 'schedule': crontab(minute='*'), 
+        'schedule': crontab(minute='*'), 
         
-        # Runs every morning at 8:00 AM
-        'schedule': crontab(hour=8, minute=0),
+        # Runs every morning at 8:00 AM instead
+        # 'schedule': crontab(hour=8, minute=0),
     },
 
     # NEW: Monthly Admin Report
     'monthly-admin-report': {
         'task': 'application.tasks.send_monthly_admin_report',
         
-        # Runs on the 1st day of every month at 8:00 AM
-        'schedule': crontab(day_of_month='1', hour=8, minute=0), 
-        
         # TESTING
-        # 'schedule': crontab(minute='*'), 
+        'schedule': crontab(minute='*'), 
+
+        # Runs on the 1st day of every month at 8:00 AM
+        # 'schedule': crontab(day_of_month='1', hour=8, minute=0),      
     }
 }

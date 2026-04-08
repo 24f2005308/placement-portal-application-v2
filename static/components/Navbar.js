@@ -77,6 +77,7 @@ export default {
         }
     },
     computed: {
+        // Automatically determine which dashboard to link to based on role
         dashboardLink() {
             if (this.role === 'admin') return '/admin/dashboard';
             if (this.role === 'company') return '/company/dashboard';
@@ -88,6 +89,7 @@ export default {
         async logoutUser() {
             const token = localStorage.getItem('auth-token');
             
+            // 1. Tell backend to log out
             if (token) {
                 try {
                     await fetch('/user-logout', {
@@ -102,12 +104,15 @@ export default {
                 }
             }
 
+            // 2. Clear frontend storage
             localStorage.removeItem('auth-token');
             localStorage.removeItem('role');
+            localStorage.removeItem('user_id');
             
             this.isLoggedIn = false;
             this.role = null;
             
+            // 3. Redirect to login page
             if (this.$route.path !== '/login') {
                 this.$router.push('/login');
             }
@@ -123,6 +128,7 @@ export default {
         }
     },
     watch: {
+        // This is the trick: Every time the route changes, re-check login status
         $route(to, from) {
             this.isLoggedIn = !!localStorage.getItem('auth-token');
             this.role = localStorage.getItem('role');

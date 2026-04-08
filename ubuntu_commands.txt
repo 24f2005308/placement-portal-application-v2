@@ -1,0 +1,10 @@
+python3 -m venv .env
+source .env/bin/activate
+pip install -r requirements.txt
+sudo systemctl stop redis
+MailHog                                         => run MailHog
+celery -A app.celery_app worker -l info         => celery worker
+celery -A app.celery_app beat -l info           => celery beat
+sudo systemctl stop redis
+sudo apt install redis-server
+pip3 install setuptools

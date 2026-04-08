@@ -293,8 +293,8 @@ export default {
         return {
             isExporting: false,
             studentSearch: '',
-            companySearch: '',
-            driveSearch: '',
+            companySearch: '', // NEW
+            driveSearch: '',   // NEW
             companies: [],
             students: [],
             drives: [],
@@ -314,7 +314,11 @@ export default {
     },
     async mounted() {
         if (!this.token) { this.$router.push('/login'); return; }
-        await this.fetchAllData();
+        window.addEventListener('export-students', this.exportStudents);
+        await this.fetchAllData(); 
+    },
+    beforeDestroy() {
+        window.removeEventListener('export-students', this.exportStudents);
     },
     methods: {
         async fetchAllData() {
@@ -354,15 +358,15 @@ export default {
         },
         async updateCompany(id, payload) {
             await this.sendPutRequest(`/api/companies/${id}`, payload);
-            await this.searchCompanies();
+            await this.searchCompanies(); // Refresh using the search method to maintain filters
         },
         async updateDrive(id, payload) {
             await this.sendPutRequest(`/api/drives/${id}`, payload);
-            await this.searchDrives();
+            await this.searchDrives(); // Refresh using the search method to maintain filters
         },
         async updateStudent(id, payload) {
             await this.sendPutRequest(`/api/students/${id}`, payload);
-            await this.searchStudents();
+            await this.searchStudents(); // Refresh using the search method to maintain filters
         },
         async sendPutRequest(url, payload) {
             this.error = null; this.success = null;

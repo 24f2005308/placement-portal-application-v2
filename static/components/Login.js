@@ -53,10 +53,12 @@ export default {
                 const data = await response.json();
                 
                 if (response.ok) {
+                    // Save token and role to local storage
                     localStorage.setItem('auth-token', data.token);
                     localStorage.setItem('role', data.role);
                     localStorage.setItem('user_id', data.user_id);
                     
+                    // Route to the appropriate dashboard based on role
                     if (data.role === 'admin') {
                         this.$router.push('/admin/dashboard');
                     } else if (data.role === 'company') {

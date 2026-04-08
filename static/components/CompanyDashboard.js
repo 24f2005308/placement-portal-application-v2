@@ -9,7 +9,7 @@ export default {
 
                 <div class="card-header bg-dark text-white fw-bold d-flex align-items-center gap-3">
     
-                    <span>1. Drives</span>
+                    <span>Drives</span>
 
                     <div class="input-group" style="max-width: 200px;">
                         <input 
@@ -57,7 +57,7 @@ export default {
             </div>
 
             <div class="card shadow-sm mb-5">
-                <div class="card-header bg-dark text-white fw-bold">2. Closed Drives</div>
+                <div class="card-header bg-dark text-white fw-bold">Closed Drives</div>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
                         <thead class="table-light"><tr v-if="closedDrives.length !== 0"><th>Sr No.</th><th>Drive Title</th><th>Date (Deadline)</th><th>Status</th><th>Actions</th></tr></thead>

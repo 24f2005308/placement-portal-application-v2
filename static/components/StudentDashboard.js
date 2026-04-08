@@ -8,7 +8,7 @@ export default {
 
             <div class="card shadow-sm mb-5">
                 <div class="card-header bg-dark text-white fw-bold d-flex align-items-center gap-3">
-                    <span>1. Organizations</span>
+                    <span style="width: 150px;">Organizations</span>
                     <div class="input-group" style="max-width: 200px;">
                         <input type="text" class="form-control form-control-sm" placeholder="Companies..." v-model="companySearch" @keyup.enter="fetchAllData">
                         <button class="btn btn-sm btn-secondary" @click="fetchAllData">Search</button>
@@ -38,8 +38,84 @@ export default {
                 </div>
             </div>
 
+
+
             <div class="card shadow-sm mb-5">
-                <div class="card-header bg-dark text-white fw-bold">2. Applied Drives</div>
+                <div class="card-header bg-dark text-white fw-bold d-flex align-items-center gap-3">
+
+                    <span style="width: 150px;">Ongoing Drives</span>
+
+                    <div class="input-group" style="max-width: 200px;">
+                        <input 
+                            type="text" 
+                            class="form-control form-control-sm" 
+                            placeholder="Drive..." 
+                            v-model="driveSearch" 
+                            @keyup.enter="searchDrives"
+                        >
+                        <button class="btn btn-sm btn-secondary" @click="searchDrives">
+                            Search
+                        </button>
+                    </div>
+
+                    <div>
+                        <button 
+                            class="btn btn-sm btn-secondary"
+                            @click="showMatchedDrives"
+                        >
+                            Matched Drives
+                        </button>
+
+                        <button 
+                            class="btn btn-sm btn-secondary"
+                            @click="resetDrives"
+                        >
+                            View All
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr v-if="ongoingDrives.length !== 0">
+                                <th class="col-sr">Sr No.</th>
+                                <th class="col-name">Company Name</th>
+                                <th class="col-job">Job Title</th>
+                                <th class="col-date">Deadline</th>
+                                <th class="col-action pe-5">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="ongoingDrives.length === 0">
+                                <td colspan="5" class="text-center">No Ongoing Drives.</td>
+                            </tr>
+
+                            <tr v-for="(drive, index) in ongoingDrives" :key="'odrive'+drive.id">
+                                <td class="col-sr">{{ index + 1 }}</td>
+                                <td class="col-name">{{ drive.company_name }}</td>
+                                <td class="col-job">{{ drive.job_title }}</td>
+                                <td class="col-date">{{ drive.application_deadline }}</td>
+                                <td class="col-action pe-5">
+                                    <router-link 
+                                        :to="'/drive/' + drive.id" 
+                                        class="btn btn-sm btn-secondary"
+                                    >
+                                        Apply
+                                    </router-link>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+
+
+
+            <div class="card shadow-sm mb-5">
+                <div class="card-header bg-dark text-white fw-bold">Applied Drives</div>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
@@ -140,11 +216,14 @@ export default {
     data() {
         return {
             companySearch: '',
+            driveSearch: '',
+            drives: [],
             companies: [],
             applications: [],
             myStudentId: null,
             showEditModal: false,
             profileForm: {},
+            studentCgpa: null,
             selectedFile: null,
             error: null,
             success: null,
@@ -156,7 +235,8 @@ export default {
     },
     computed: {
         approvedCompanies() { return this.companies.filter(c => c.approval_status === 'Approved'); },
-        myApplications() { return this.applications.filter(a => String(a.student_id) === String(this.myStudentId)); }
+        myApplications() { return this.applications.filter(a => String(a.student_id) === String(this.myStudentId)); },
+        ongoingDrives() { return this.drives.filter(d => d.status === 'Approved'); }
     },
     async mounted() {
         if (!this.token) { this.$router.push('/login'); return; }
@@ -166,12 +246,37 @@ export default {
         await this.fetchAllData();
     },
     methods: {
+        showMatchedDrives() {
+            if (this.studentCgpa === null) {
+                this.error = "Student CGPA not available";
+                return;
+            }
+
+            this.drives = this.drives.filter(d => {
+                if (d.eligibility_cgpa === null || d.eligibility_cgpa === undefined) {
+                    return true;
+                }
+                return d.eligibility_cgpa <= this.studentCgpa;
+            });
+        },
+        async resetDrives() {
+            await this.searchDrives();
+        },
         async identifyStudent() {
             try {
                 const res = await fetch('/api/students', { headers: { 'Authentication-Token': this.token } });
                 const allStudents = await res.json();
                 const me = allStudents.find(s => String(s.user_id) === String(this.userId));
-                if (me) this.myStudentId = me.id;
+                if (me) {
+                    this.myStudentId = me.id;
+                    const profileRes = await fetch(`/api/students/${me.id}`, {
+                        headers: { 'Authentication-Token': this.token }
+                    });
+                    if (profileRes.ok) {
+                        const profile = await profileRes.json();
+                        this.studentCgpa = profile.cgpa;
+                    }
+                }
             } catch(e) { console.error("Could not identify student"); }
         },
         async fetchAllData() {
@@ -180,7 +285,25 @@ export default {
 
                 const appRes = await fetch('/api/applications', { headers: { 'Authentication-Token': this.token } });
                 if(appRes.ok) this.applications = await appRes.json();
+                await this.searchDrives();
             } catch(e) { this.error = "Error fetching dashboard data."; }
+        },
+        async searchDrives() {
+            let url = '/api/drives';
+            if (this.driveSearch) {
+                url += '?search_word=' + encodeURIComponent(this.driveSearch);
+            }
+            await this.fetchDriveData(url);
+        },
+        async fetchDriveData(url) {
+            try {
+                const res = await fetch(url, {
+                    headers: { 'Authentication-Token': this.token }
+                });
+                if (res.ok) this.drives = await res.json();
+            } catch (e) {
+                console.error("Failed to fetch drives");
+            }
         },
         async openEditModal() {
             try {

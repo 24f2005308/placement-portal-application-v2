@@ -39,6 +39,20 @@ export default {
                                         <input type="text" class="form-control" v-model="last_name" required>
                                     </div>
                                 </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Branch</label>
+                                        <input type="text" class="form-control" v-model="branch">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">CGPA</label>
+                                        <input type="number" step="0.1" class="form-control" v-model="cgpa">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Graduation Year</label>
+                                        <input type="number" class="form-control" v-model="graduation_year">
+                                    </div>
+                                </div>
                             </div>
 
                             <div v-if="role === 'company'">
@@ -73,7 +87,7 @@ export default {
     `,
     data() {
         return {
-            role: 'student',
+            role: 'student', // Default selection
             email: '',
             password: '',
             first_name: '',
@@ -100,6 +114,9 @@ export default {
             if (this.role === 'student') {
                 payload.first_name = this.first_name;
                 payload.last_name = this.last_name;
+                payload.branch = this.branch;
+                payload.cgpa = this.cgpa;
+                payload.graduation_year = this.graduation_year;
             } else {
                 payload.company_name = this.company_name;
                 payload.hr_contact = this.hr_contact;
@@ -117,9 +134,7 @@ export default {
                 const data = await response.json();
                 
                 if (response.ok) {
-                    this.success = data.message + " You can now log in.";
-                    this.email = '';
-                    this.password = '';
+                    this.success = data.message;
                 } else {
                     this.error = data.message || 'Registration failed';
                 }

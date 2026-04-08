@@ -3,6 +3,7 @@ from flask_restful import Resource, Api, reqparse
 from flask_security import auth_required, current_user
 from application.models import*
 from datetime import datetime
+from application.cache import cache
 
 api = Api(prefix='/api')
 
@@ -62,9 +63,11 @@ app_put_parser.add_argument('remark', type=str)
 
 
 
+# API CLASSES
 
 class AdminDashboardResource(Resource):
     @auth_required('token')
+    @cache.cached(timeout=60, query_string = True)
     def get(self):
         if not current_user.has_role('admin'):
             return {"message": "Unauthorized"}, 403
@@ -78,6 +81,7 @@ class AdminDashboardResource(Resource):
 
 class CompanyResource(Resource):
     @auth_required('token')
+    @cache.cached(timeout=60, query_string=True)
     def get(self, id=None):
         if id:
             company = Company.query.get(id)
@@ -126,6 +130,7 @@ class CompanyResource(Resource):
                 if user:
                     user.active = args['active']
             db.session.commit()
+            cache.clear()
             return {"message": "Company status updated by Admin"}, 200
 
         if current_user.has_role('company') and company.user_id == current_user.id:
@@ -136,6 +141,7 @@ class CompanyResource(Resource):
             if args.get('hr_contact'):
                 company.hr_contact = args['hr_contact']
             db.session.commit()
+            cache.clear()
             return {"message": "Company profile updated successfully"}, 200
 
         return {"message": "Unauthorized action"}, 403
@@ -143,6 +149,8 @@ class CompanyResource(Resource):
 
 class StudentResource(Resource):
     @auth_required('token')
+    @cache.cached(timeout=60, query_string=True)
+
     def get(self, id=None):
         if id:
             student = Student.query.get(id)
@@ -194,6 +202,7 @@ class StudentResource(Resource):
                 if user:
                     user.active = args['active']
                 db.session.commit()
+                cache.clear()
                 return {"message": "Student status updated by Admin"}, 200
 
         if current_user.has_role('student') and student.user_id == current_user.id:
@@ -208,6 +217,7 @@ class StudentResource(Resource):
             if args.get('graduation_year'):
                 student.graduation_year = args['graduation_year']
             db.session.commit()
+            cache.clear()
             return {"message": "Student profile updated successfully"}, 200
 
         return {"message": "Unauthorized action"}, 403
@@ -215,6 +225,7 @@ class StudentResource(Resource):
 
 class PlacementDriveResource(Resource):
     @auth_required('token')
+    @cache.cached(timeout=60, query_string=True)
     def get(self, id=None):
         if id:
             drive = PlacementDrive.query.get(id)
@@ -236,11 +247,29 @@ class PlacementDriveResource(Resource):
             }, 200
 
         search_query = request.args.get('search_word')
+
+        company = None
+        if current_user.has_role('company'):
+            company = Company.query.filter_by(user_id=current_user.id).first()
+
         if search_query:
             raw_search = make_raw(search_query)
-            drives = PlacementDrive.query.filter(PlacementDrive.search_job_title.like(f'%{raw_search}%')).all()
+
+            if company:
+                drives = PlacementDrive.query.filter(
+                    PlacementDrive.company_id == company.id,
+                    PlacementDrive.search_job_title.like(f'%{raw_search}%')
+                ).all()
+            else:
+                drives = PlacementDrive.query.filter(
+                    PlacementDrive.search_job_title.like(f'%{raw_search}%')
+                ).all()
+
         else:
-            drives = PlacementDrive.query.all()
+            if company:
+                drives = PlacementDrive.query.filter_by(company_id=company.id).all()
+            else:
+                drives = PlacementDrive.query.all()
 
         result = []
         for d in drives:
@@ -252,7 +281,8 @@ class PlacementDriveResource(Resource):
                 "job_location": d.job_location,
                 "status": d.status,
                 "application_deadline": str(d.application_deadline),
-                "company_name": comp.company_name if comp else "Unknown"
+                "company_name": comp.company_name if comp else "Unknown",
+                "eligibility_cgpa": d.eligibility_cgpa
             })
         return result, 200
 
@@ -289,6 +319,7 @@ class PlacementDriveResource(Resource):
 
         db.session.add(new_drive)
         db.session.commit()
+        cache.clear()
         return {"message": "Drive created successfully"}, 201
 
     @auth_required('token')
@@ -301,6 +332,7 @@ class PlacementDriveResource(Resource):
         if current_user.has_role('admin') and args.get('status'):
             drive.status = args['status']
             db.session.commit()
+            cache.clear()
             return {"message": "Drive status updated by Admin"}, 200
             
         if current_user.has_role('company'):
@@ -317,6 +349,7 @@ class PlacementDriveResource(Resource):
                     try: drive.application_deadline = datetime.strptime(args['application_deadline'], '%Y-%m-%d').date()
                     except: pass
                 db.session.commit()
+                cache.clear()
                 return {"message": "Drive details updated"}, 200
 
         return {"message": "Unauthorized action"}, 403
@@ -324,6 +357,7 @@ class PlacementDriveResource(Resource):
 
 class ApplicationResource(Resource):
     @auth_required('token')
+    @cache.cached(timeout=60)
     def get(self, id=None):
         apps = Application.query.all()
         result = []
@@ -366,6 +400,7 @@ class ApplicationResource(Resource):
 
         db.session.add(new_application)
         db.session.commit()
+        cache.clear()
         return {"message": "Application submitted successfully"}, 201
     
     @auth_required('token')
@@ -385,10 +420,16 @@ class ApplicationResource(Resource):
             app_record.remark = args['remark']
 
         db.session.commit()
+        cache.clear()
+
+        if status_changed:
+            from application.tasks import send_status_update_email
+            send_status_update_email.delay(app_record.id)
 
         return {"message": "Application updated successfully"}, 200
 
 
+# REGISTER RESOURCES
 
 api.add_resource(AdminDashboardResource, '/admin/dashboard') 
 api.add_resource(CompanyResource, '/companies', '/companies/<int:id>')

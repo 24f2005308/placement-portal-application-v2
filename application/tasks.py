@@ -1,7 +1,9 @@
 import os
 import csv
 from celery import shared_task
-from datetime import datetime
+from datetime import datetime, timedelta
+
+# 1. FIX: Removed 'from flask import render_template'
 from application.mail import send_email
 from application.models import *
 from application.utils import format_report
@@ -9,6 +11,9 @@ from application.utils import format_report
 
 @shared_task(ignore_result=True)
 def send_monthly_student_report(student_user_id):
+    """
+    Fetches a student's applications and sends them an HTML email report.
+    """
     user = User.query.get(student_user_id)
     student = Student.query.filter_by(user_id=student_user_id).first()
     
@@ -33,6 +38,7 @@ def send_monthly_student_report(student_user_id):
         "applications": app_data
     }
 
+    # 2. FIX: Replaced render_template with format_report
     message = format_report('templates/mail_details.html', data)
 
     send_email(
@@ -47,10 +53,14 @@ def send_monthly_student_report(student_user_id):
 
 @shared_task(ignore_result=False)
 def export_students_csv():
+    """
+    Background task to generate a CSV file containing all student data.
+    """
     export_folder = 'static/exports'
     if not os.path.exists(export_folder):
         os.makedirs(export_folder)
 
+    # Note: Generating a dynamic filename with timestamp like the instructor
     filename = f'students_export_{datetime.now().strftime("%f")}.csv'
     file_path = os.path.join(export_folder, filename)
 
@@ -94,6 +104,7 @@ def send_status_update_email(application_id):
             "status": app_record.status
         }
         
+        # 4. FIX: Replaced render_template with format_report
         message = format_report('templates/status_update.html', data)
         
         send_email(
@@ -159,12 +170,22 @@ def send_deadline_reminders():
 
 @shared_task(ignore_result=True)
 def send_monthly_admin_report():
+    """
+    Scheduled task that runs on the 1st of every month to send the Admin
+    a summary of placement activities (Drives, Applications, Selections).
+    """
+    # 1. Gather Statistics
+    # For a simple overview, we count the total lifetime metrics. 
+    # (To strictly limit to the current month, you could add date filters here).
     total_drives = PlacementDrive.query.count()
     
+    # Total unique applications
     total_applications = Application.query.count()
     
+    # Total students marked as 'Selected' or 'Hired' by the companies
     total_selected = Application.query.filter(Application.status.in_(['Selected', 'Hired', 'Accepted'])).count()
 
+    # 2. Prepare the data dictionary for Jinja2
     report_data = {
         "month_year": datetime.now().strftime("%B %Y"),
         "total_drives": total_drives,
@@ -172,14 +193,18 @@ def send_monthly_admin_report():
         "total_selected": total_selected
     }
 
+    # 3. Format the message using the instructor's utils function
     message = format_report('templates/admin_monthly_report.html', report_data)
 
+    # 4. Fetch all active Admin users
     admins = User.query.filter(User.active == True).all()
     admin_users = [u for u in admins if u.has_role('admin')]
     
+    # Import send_email locally
     from application.mail import send_email
     emails_sent = 0
 
+    # 5. Loop through admins and send the email
     for admin in admin_users:
         send_email(
             to_address=admin.email,
@@ -207,11 +232,14 @@ def export_student_history_csv(user_id):
     if not os.path.exists(export_folder):
         os.makedirs(export_folder)
 
+    # 1. Create a unique filename
     filename = f'history_{student.id}_{datetime.now().strftime("%f")}.csv'
     file_path = os.path.join(export_folder, filename)
 
+    # 2. Fetch their applications
     applications = Application.query.filter_by(student_id=student.id).all()
 
+    # 3. Write data to CSV
     with open(file_path, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(['Student ID', 'Company Name', 'Drive Title', 'Application Status', 'Application Date'])
@@ -220,6 +248,7 @@ def export_student_history_csv(user_id):
             drive = PlacementDrive.query.get(app.drive_id)
             comp = Company.query.get(drive.company_id) if drive else None
             
+            # Use getattr safely in case application_date isn't populated on some older records
             app_date = getattr(app, 'application_date', 'N/A')
             
             writer.writerow([
@@ -230,6 +259,7 @@ def export_student_history_csv(user_id):
                 str(app_date)
             ])
 
+    # 4. SEND THE EMAIL ALERT (Using the instructor's pattern)
     from application.mail import send_email
     
     data = {"student_name": f"{student.first_name} {student.last_name}"}
@@ -242,4 +272,5 @@ def export_student_history_csv(user_id):
         content="html"
     )
 
+    # 5. Return filename to the frontend for downloading
     return filename
