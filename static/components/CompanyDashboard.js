@@ -129,11 +129,10 @@ export default {
                             <p>Select a new deadline for <strong>{{ extendingDrive.job_title }}</strong>.</p>
                             <label class="fw-bold">New Deadline Date</label>
                             <input type="date" class="form-control" v-model="newDeadline">
-                            <small class="text-muted d-block mt-2">Saving will change the status from Closed back to Approved.</small>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" @click="extendingDrive = null">Cancel</button>
-                            <button type="button" class="btn btn-success" @click="saveExtension">Save & Re-approve</button>
+                            <button type="button" class="btn btn-success" @click="saveExtension">Save</button>
                         </div>
                     </div>
                 </div>

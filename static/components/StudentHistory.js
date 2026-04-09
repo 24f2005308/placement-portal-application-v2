@@ -25,7 +25,7 @@ export default {
                 </div>
 
                 <div class="card shadow-sm border-secondary">
-                    <div class="card-header bg-secondary text-white fw-bold">Full Application History</div>
+                    <div class="card-header bg-dark text-white fw-bold">Full Application History</div>
                     <div class="card-body p-0">
                         <table class="table table-hover mb-0">
                             <thead class="table-light"><tr v-if="myHistory.length !== 0"><th class="col-sr">Sr No.</th><th class="col-date">Date</th><th class="col-name">Company</th><th class="col-job">Job Title</th><th class="col-status">Status</th><th class="col-remark">Remark</th></tr></thead>

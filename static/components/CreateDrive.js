@@ -53,7 +53,7 @@ export default {
                                     <input type="number" class="form-control" v-model="form.eligibility_year">
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-secondary w-100 btn-lg mt-2">Save & Create Drive</button>
+                            <button type="submit" class="btn btn-secondary w-100 btn-lg mt-2">Create</button>
                         </form>
                     </div>
                 </div>
