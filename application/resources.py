@@ -353,6 +353,29 @@ class PlacementDriveResource(Resource):
                 return {"message": "Drive details updated"}, 200
 
         return {"message": "Unauthorized action"}, 403
+    
+    @auth_required('token')
+    def delete(self, id):
+        drive = PlacementDrive.query.get(id)
+        if not drive:
+            return {"message": "Drive not found"}, 404
+
+        if not current_user.has_role('company'):
+            return {"message": "Unauthorized"}, 403
+
+        comp = Company.query.filter_by(user_id=current_user.id).first()
+
+        if not comp or drive.company_id != comp.id:
+            return {"message": "Unauthorized"}, 403
+
+        if drive.status not in ['Pending']:
+            return {"message": "Cannot delete completed drive"}, 400
+
+        db.session.delete(drive)
+        db.session.commit()
+        cache.clear()
+
+        return {"message": "Drive deleted successfully"}, 200
 
 
 class ApplicationResource(Resource):

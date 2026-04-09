@@ -20,7 +20,7 @@ export default {
                 </div>
 
                 <div class="card shadow-sm">
-                    <div class="card-header bg-dark text-white fw-bold">Applicant List</div>
+                    <div class="card-header bg-dark text-white fw-bold">Applicant List: {{applicants.length}} Application</div>
                     <div class="card-body p-0">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">

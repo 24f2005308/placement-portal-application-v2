@@ -49,6 +49,12 @@ export default {
                                     </template>
                                     
                                     <button v-if="drive.status === 'Rejected'" @click="openEditModal(drive)" class="btn btn-sm btn-warning">Resubmit</button>
+                                    <button 
+                                        v-if="drive.status === 'Pending'"
+                                        @click="deleteDrive(drive.id)" 
+                                        class="btn btn-sm btn-secondary ms-2">
+                                        Delete
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
@@ -192,6 +198,32 @@ export default {
             }
             await this.sendPutRequest(`/api/drives/${this.editingDrive.id}`, payload);
             this.editingDrive = null;
+        },
+        async deleteDrive(id) {
+            if (!confirm("Are you sure you want to delete this drive?")) return;
+
+            this.error = null;
+            this.success = null;
+
+            try {
+                const response = await fetch(`/api/drives/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authentication-Token': this.token
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    this.success = data.message;
+                    await this.fetchDrives(); // refresh list
+                } else {
+                    this.error = data.message;
+                }
+            } catch (err) {
+                this.error = "Delete failed.";
+            }
         },
         openExtendModal(drive) {
             this.extendingDrive = drive;
